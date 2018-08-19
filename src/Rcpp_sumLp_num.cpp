@@ -9,7 +9,7 @@ double Rcpp_sumLp_num(Rcpp::NumericVector x, Rcpp::NumericVector nthread) {
   int nthreads = nthread[0];
   
   #pragma omp parallel for shared(x) reduction(+:sum) num_threads(nthreads)
-  for (int i = 0; i < x.size(); i++) {
+  for (R_xlen_t i = 0; i < x.size(); i++) {
     sum += x[i];
   }
     
