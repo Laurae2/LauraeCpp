@@ -69,7 +69,7 @@ Results of the parallel mean:
 
 | What | Threads | Elapsed Time | CPU Time | Throughput | Speedup vs R | Information |
 | --- | ---: | ---: | ---: | ---: | ---: | ------ |
-| R | 1 | 33.235s | 33.235s | 0.3 bn/s | 1x | Handles NA. Handles more than 2^31 - 1 elements.
+| R | 1 | 33.235s | 33.235s | 0.3 bn/s | 1x | Handles NA. |
 | C++ | 1 | 16.139s | 16.141s | 0.6 bn/s | 2.06x | No checks on data. |
 | C++ | 2 | 7.985s | 15.527s | 1.3 bn/s | 4.16x | No checks on data. |
 | C++ | 4 | 4.024s | 15.674s | 2.5 bn/s | 8.26x | No checks on data. |
