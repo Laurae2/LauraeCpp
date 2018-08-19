@@ -67,5 +67,6 @@ On a 16GB vector (2^31 - 1 elements), parallel mean:
 
 | Function | Parameters | Effect |
 | :--- | :--- | :------ |
-| meanLp_num | nthread | Parallel mean on numeric vector (< smaller than 2^31 - 1) |
+| meanLp_num | nthread | Relaxed parallel mean on numeric vector (< smaller than 2^31 - 1) |
+| sumLp_num | nthread | Relaxed parallel sum on numeric vector (< smaller than 2^31 - 1) |
 

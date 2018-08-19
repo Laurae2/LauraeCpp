@@ -17,9 +17,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Rcpp_sumLp_num
+double Rcpp_sumLp_num(Rcpp::NumericVector x, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_sumLp_num(SEXP xSEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_sumLp_num(x, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_LauraeCpp_Rcpp_meanLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_meanLp_num, 2},
+    {"_LauraeCpp_Rcpp_sumLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_sumLp_num, 2},
     {NULL, NULL, 0}
 };
 

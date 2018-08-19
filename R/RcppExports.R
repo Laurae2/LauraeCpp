@@ -5,3 +5,7 @@ Rcpp_meanLp_num <- function(x, nthread) {
     .Call(`_LauraeCpp_Rcpp_meanLp_num`, x, nthread)
 }
 
+Rcpp_sumLp_num <- function(x, nthread) {
+    .Call(`_LauraeCpp_Rcpp_sumLp_num`, x, nthread)
+}
+
