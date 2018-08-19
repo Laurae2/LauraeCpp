@@ -20,6 +20,8 @@ install.packages("Rcpp")
 
 # Performance Show
 
+Example of a parallel mean on a 10,000,000,000 length numeric vector (10 billion and 80GiB !!!).
+
 Server:
 
 * Dual Xeon Gold 6130 (2x 16 cores / 32 threads, 2.8 GHz all turbo, 3.7 GHz singlethread)
@@ -39,29 +41,53 @@ CPU frequency:
 | 2.8 GHz | 13, 14, 15, 16 |
 | 2.8 GHz | 17-32 |
 
-On a 16GB vector (2^31 - 1 elements), parallel mean:
+On a 80GiB (74.5GB) vector (10,000,000,000 elements), parallel mean:
 
-| What | Threads | Elapsed Time | CPU Time | Throughput | Information |
-| --- | ---: | ---: | ---: | ---: | ------ |
-| R | 1 | 6.137s | 6.141s | 0.3 bn/s | Handles NA. Handles more than 2^31 - 1 elements.
-| C++ | 1 | 3.147s | 3.147s | 0.7 bn/s | No checks on data. |
-| C++ | 2 | 1.613s | 3.206s | 1.3 bn/s | No checks on data. |
-| C++ | 4 | 0.832s | 3.304s | 2.6 bn/s | No checks on data. |
-| C++ | 8 | 0.432s | 3.432s | 5.0 bn/s | No checks on data. |
-| C++ | 16 | 0.229s | 3.664s | 9.4 bn/s | No checks on data. |
-| C++ | 32 | 0.172s | 5.241s | 12.4 bn/s | No checks on data. |
-| C++ | 61 | 0.152s | 9.102s | 14.0 bn/s | No checks on data. Optimal run. |
-| C++ | 64 | 0.165s | 9.791s | 13.0 bn/s | No checks on data. |
+```r
+> set.seed(1)
+> my_vec <- runif(n = 1e10, min = -0.5, max = 1)
+> object.size(my_vec)
+80000000048 bytes
+```
 
-![image](https://user-images.githubusercontent.com/9083669/44307446-2032d880-a3a3-11e8-891b-d7f1d53e17d3.png)
+Repeats per number of threads from 1 to 64:
 
-![image](https://user-images.githubusercontent.com/9083669/44307995-478ea300-a3ad-11e8-8d8e-988078faae5a.png)
+```r
+# Approx 4521.241 seconds total
+> ceiling(20 * log(seq_len(64) + 1))
+ [1] 14 22 28 33 36 39 42 44 
+ [9] 47 48 50 52 53 55 56 57
+[17] 58 59 60 61 62 63 64 65
+[25] 66 66 67 68 69 69 70 70
+[33] 71 72 72 73 73 74 74 75
+[41] 75 76 76 77 77 78 78 78
+[49] 79 79 80 80 80 81 81 81
+[57] 82 82 82 83 83 83 84 84
+```
 
-![image](https://user-images.githubusercontent.com/9083669/44307997-4f4e4780-a3ad-11e8-8e7d-8220c9b00e4e.png)
+Results of the parallel mean:
 
-![image](https://user-images.githubusercontent.com/9083669/44307479-7738ad80-a3a3-11e8-8529-c236d95891a2.png)
+| What | Threads | Elapsed Time | CPU Time | Throughput | Speedup vs R | Information |
+| --- | ---: | ---: | ---: | ---: | ---: | ------ |
+| R | 1 | 33.235s | 33.235s | 0.3 bn/s | 1x | Handles NA. Handles more than 2^31 - 1 elements.
+| C++ | 1 | 16.139s | 16.141s | 0.6 bn/s | 2.06x | No checks on data. |
+| C++ | 2 | 7.985s | 15.527s | 1.3 bn/s | 4.16x | No checks on data. |
+| C++ | 4 | 4.024s | 15.674s | 2.5 bn/s | 8.26x | No checks on data. |
+| C++ | 8 | 2.101s | 16.188s | 4.8 bn/s | 15.82x | No checks on data. |
+| C++ | 16 | 1.097s | 16.782s | 9.1 bn/s | 30.30x | No checks on data. |
+| C++ | 32 | 0.814s | 24.112s | 12.3 bn/s | 40.83x | No checks on data. |
+| C++ | 63 | 0.721s | 43.887s | 13.9 bn/s | 46.10x | No checks on data. Optimal run. |
+| C++ | 64 | 0.733s | 43.322s | 13.6 bn/s | 45.34x | No checks on data. |
 
-![image](https://user-images.githubusercontent.com/9083669/44307480-7acc3480-a3a3-11e8-9bb4-42a0c72c08f6.png)
+![image](https://user-images.githubusercontent.com/9083669/44313489-1b553f80-a40a-11e8-9a7f-9c26e64b059b.png)
+
+![image](https://user-images.githubusercontent.com/9083669/44313512-74bd6e80-a40a-11e8-84e2-118d85cf0b86.png)
+
+![image](https://user-images.githubusercontent.com/9083669/44313493-214b2080-a40a-11e8-948c-36be89924a32.png)
+
+![image](https://user-images.githubusercontent.com/9083669/44313496-27410180-a40a-11e8-9aec-f49ff15a79c2.png)
+
+![image](https://user-images.githubusercontent.com/9083669/44313499-31fb9680-a40a-11e8-81f7-b53525cc8ad7.png)
 
 # Functions included
 
