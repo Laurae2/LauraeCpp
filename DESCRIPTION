@@ -1,0 +1,16 @@
+Package: LauraeCpp
+Type: Package
+Title: Parallel R for High Performance Computing
+Version: 0.20180819
+Date: 2018-08-19
+Authors@R: person("Laurae", "Laurae", email = "first.last@example.com", role = c("aut", "cre"))
+Description: This package is meant for high performance computing on single systems using parallel functions.
+Depends:
+	R (>= 3.3.0)
+Imports:
+	Rcpp (>= 0.12.16),
+	parallel
+LinkingTo: Rcpp
+License: What license is it under? A license where I'm not liable for anything you do bad with.
+Encoding: UTF-8
+RoxygenNote: 6.0.1
