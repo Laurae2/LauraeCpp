@@ -9,7 +9,7 @@ High Performance R by Laurae
 Requires `Rcpp` (CRAN download) and `parallel` (preinstalled) packages.
 
 ```r
-devtools::install_github("Laurae2/LauraeRcpp", upgrade_dependencies = FALSE)
+devtools::install_github("Laurae2/LauraeCpp", upgrade_dependencies = FALSE)
 ```
 
 Dependencies:
