@@ -5,6 +5,19 @@
 
 using namespace Rcpp;
 
+// Rcpp_addLp_int
+Rcpp::IntegerVector Rcpp_addLp_int(Rcpp::IntegerVector x, Rcpp::IntegerVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_addLp_int(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_addLp_int(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Rcpp_meanLp_num
 double Rcpp_meanLp_num(Rcpp::NumericVector x, Rcpp::NumericVector nthread);
 RcppExport SEXP _LauraeCpp_Rcpp_meanLp_num(SEXP xSEXP, SEXP nthreadSEXP) {
@@ -31,6 +44,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_LauraeCpp_Rcpp_addLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_addLp_int, 3},
     {"_LauraeCpp_Rcpp_meanLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_meanLp_num, 2},
     {"_LauraeCpp_Rcpp_sumLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_sumLp_num, 2},
     {NULL, NULL, 0}

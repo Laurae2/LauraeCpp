@@ -93,6 +93,7 @@ Results of the parallel mean:
 
 | Function | Parameters | Effect |
 | :--- | :--- | :------ |
-| meanLp_num | nthread | Relaxed parallel mean on numeric vector (< smaller than 2^31 - 1) |
-| sumLp_num | nthread | Relaxed parallel sum on numeric vector (< smaller than 2^31 - 1) |
+| meanLp_num | nthread | Relaxed parallel mean on numeric vector |
+| sumLp_num | nthread | Relaxed parallel sum on numeric vector |
+| addLp_int | nthread | Relaxed parallel A + B on integer vector |
 
