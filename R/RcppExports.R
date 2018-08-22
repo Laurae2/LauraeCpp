@@ -5,8 +5,40 @@ Rcpp_addLp_int <- function(x, y, nthread) {
     .Call(`_LauraeCpp_Rcpp_addLp_int`, x, y, nthread)
 }
 
+Rcpp_addLp_num <- function(x, y, nthread) {
+    .Call(`_LauraeCpp_Rcpp_addLp_num`, x, y, nthread)
+}
+
+Rcpp_divLp_num <- function(x, y, nthread) {
+    .Call(`_LauraeCpp_Rcpp_divLp_num`, x, y, nthread)
+}
+
+Rcpp_meanLp_int <- function(x, nthread) {
+    .Call(`_LauraeCpp_Rcpp_meanLp_int`, x, nthread)
+}
+
 Rcpp_meanLp_num <- function(x, nthread) {
     .Call(`_LauraeCpp_Rcpp_meanLp_num`, x, nthread)
+}
+
+Rcpp_mulLp_int <- function(x, y, nthread) {
+    .Call(`_LauraeCpp_Rcpp_mulLp_int`, x, y, nthread)
+}
+
+Rcpp_mulLp_num <- function(x, y, nthread) {
+    .Call(`_LauraeCpp_Rcpp_mulLp_num`, x, y, nthread)
+}
+
+Rcpp_subLp_int <- function(x, y, nthread) {
+    .Call(`_LauraeCpp_Rcpp_subLp_int`, x, y, nthread)
+}
+
+Rcpp_subLp_num <- function(x, y, nthread) {
+    .Call(`_LauraeCpp_Rcpp_subLp_num`, x, y, nthread)
+}
+
+Rcpp_sumLp_int <- function(x, nthread) {
+    .Call(`_LauraeCpp_Rcpp_sumLp_int`, x, nthread)
 }
 
 Rcpp_sumLp_num <- function(x, nthread) {

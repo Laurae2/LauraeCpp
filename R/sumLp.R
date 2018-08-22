@@ -2,18 +2,22 @@
 #'
 #' A parallel version of the sum function.
 #'
-#' Does not handle vectors larger than 2^31 - 1 elements (2,147,483,647 elements).
 #' Make sure there is no NA value inside the vector, or the result becomes NA.
 #'
 #' On Windows, the parallel version requires more RAM than the singlethreaded version.
 #' The memory requirements scales linearly with the number of threads requested on Windows.
 #'
-#' @param x The numeric vector to compute the sum on.
+#' Use the following functions if you already know the input types: \itemize{
+#' \item{\code{sumLp.integer}}{ for integer}
+#' \item{\code{sumLp.numeric}}{ for numeric}
+#' }
+#'
+#' @param x The integer or numeric vector to compute the sum on.
 #' @param nthread The number of threads to use for parallelization. Defaults to \code{parallel::detectCores()}.
 #'
-#' @return The sum of the numeric vector.
+#' @return The sum of the integer or numeric vector.
 #'
-#' @aliases Rcpp_sumLp_num
+#' @aliases sumLp.integer sumLp.numeric Rcpp_sumLp_int Rcpp_sumLp_num
 #'
 #' @examples
 #'
@@ -28,17 +32,16 @@
 #'
 #' # Singlethreaded version
 #' system.time({
-#'   y1 <- sumLp_num(x = x, nthread = 1)
+#'   y1 <- sumLp(x = x, nthread = 1)
 #' })
 #'
 #' # Multithreaded version
 #' system.time({
-#'   y2 <- sumLp_num(x = x, nthread = 2)
+#'   y2 <- sumLp(x = x, nthread = 2)
 #' })
 #'
 #' # Proof check
-#' all.equal(y0, y1)
-#' all.equal(y0, y2)
+#' stopifnot(all.equal(y0, y1), all.equal(y0, y2))
 #' rm(x, y0, y1, y2)
 #'
 #' \dontrun{
@@ -49,15 +52,33 @@
 #'   y1 <- sum(x)
 #' })
 #' system.time({
-#'   y2 <- sumLp_num(x = x, nthread = parallel::detectCores())
+#'   y2 <- sumLp(x = x, nthread = parallel::detectCores())
 #' })
-#' all.equal(y1, y2)
+#' stopifnot(all.equal(y1, y2))
 #' rm(x, y1, y2)
 #' }
 #'
 #' @export
 
-sumLp_num <- function(x, nthread = parallel::detectCores()) {
+sumLp <- function(x, nthread = parallel::detectCores()) {
+
+  if (class(x) == "integer") {
+    return(Rcpp_sumLp_int(x, nthread))
+  } else if (class(x) == "numeric") {
+    return(Rcpp_sumLp_num(x, nthread))
+  } else {
+    stop(paste0("Class of object x is incorrect: ", class(x)))
+  }
+
+}
+
+sumLp.integer <- function(x, nthread = parallel::detectCores()) {
+
+  return(Rcpp_sumLp_int(x, nthread))
+
+}
+
+sumLp.numeric <- function(x, nthread = parallel::detectCores()) {
 
   return(Rcpp_sumLp_num(x, nthread))
 

@@ -18,6 +18,44 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Rcpp_addLp_num
+Rcpp::NumericVector Rcpp_addLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_addLp_num(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_addLp_num(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_divLp_num
+Rcpp::NumericVector Rcpp_divLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_divLp_num(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_divLp_num(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_meanLp_int
+double Rcpp_meanLp_int(Rcpp::IntegerVector x, Rcpp::IntegerVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_meanLp_int(SEXP xSEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_meanLp_int(x, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Rcpp_meanLp_num
 double Rcpp_meanLp_num(Rcpp::NumericVector x, Rcpp::NumericVector nthread);
 RcppExport SEXP _LauraeCpp_Rcpp_meanLp_num(SEXP xSEXP, SEXP nthreadSEXP) {
@@ -27,6 +65,70 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
     rcpp_result_gen = Rcpp::wrap(Rcpp_meanLp_num(x, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_mulLp_int
+Rcpp::IntegerVector Rcpp_mulLp_int(Rcpp::IntegerVector x, Rcpp::IntegerVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_mulLp_int(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_mulLp_int(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_mulLp_num
+Rcpp::NumericVector Rcpp_mulLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_mulLp_num(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_mulLp_num(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_subLp_int
+Rcpp::IntegerVector Rcpp_subLp_int(Rcpp::IntegerVector x, Rcpp::IntegerVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_subLp_int(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_subLp_int(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_subLp_num
+Rcpp::NumericVector Rcpp_subLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::NumericVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_subLp_num(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_subLp_num(x, y, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_sumLp_int
+int Rcpp_sumLp_int(Rcpp::IntegerVector x, Rcpp::IntegerVector nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_sumLp_int(SEXP xSEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_sumLp_int(x, nthread));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -45,7 +147,15 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_LauraeCpp_Rcpp_addLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_addLp_int, 3},
+    {"_LauraeCpp_Rcpp_addLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_addLp_num, 3},
+    {"_LauraeCpp_Rcpp_divLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_divLp_num, 3},
+    {"_LauraeCpp_Rcpp_meanLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_meanLp_int, 2},
     {"_LauraeCpp_Rcpp_meanLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_meanLp_num, 2},
+    {"_LauraeCpp_Rcpp_mulLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_mulLp_int, 3},
+    {"_LauraeCpp_Rcpp_mulLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_mulLp_num, 3},
+    {"_LauraeCpp_Rcpp_subLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_subLp_int, 3},
+    {"_LauraeCpp_Rcpp_subLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_subLp_num, 3},
+    {"_LauraeCpp_Rcpp_sumLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_sumLp_int, 2},
     {"_LauraeCpp_Rcpp_sumLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_sumLp_num, 2},
     {NULL, NULL, 0}
 };

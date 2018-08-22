@@ -4,9 +4,16 @@ setwd("E:/Performance/Package")
 
 Rcpp::compileAttributes("LauraeCpp")
 
+desc <- readLines("LauraeCpp/DESCRIPTION")
+desc[4] <- paste0("Version: 0.", format(Sys.Date(), format = "%Y%m%d"))
+desc[5] <- paste0("Date: ", format(Sys.Date(), format = "%Y-%m-%d"))
+writeLines(desc, "LauraeCpp/DESCRIPTION")
+
 unlink("Document", recursive = TRUE, force = TRUE)
 dir.create("Document")
 file.copy("LauraeCpp", "Document", recursive = TRUE)
+unlink("Document/LauraeCpp/man", recursive = TRUE, force = TRUE)
+dir.create("Document/LauraeCpp/man")
 devtools::document("Document/LauraeCpp")
 unlink("LauraeCpp/man", recursive = TRUE, force = TRUE)
 dir.create("LauraeCpp/man")
