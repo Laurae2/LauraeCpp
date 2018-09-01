@@ -3,12 +3,11 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-double Rcpp_meanLp_num(Rcpp::NumericVector x, Rcpp::NumericVector nthread) {
+double Rcpp_meanLp_num(Rcpp::NumericVector x, int nthread) {
   
   double sum = 0.0;
-  int nthreads = nthread[0];
   
-  #pragma omp parallel for shared(x) reduction(+:sum) num_threads(nthreads)
+  #pragma omp parallel for shared(x) reduction(+:sum) num_threads(nthread)
   for (R_xlen_t i = 0; i < x.size(); i++) {
     sum += x[i];
   }

@@ -9,6 +9,14 @@ Rcpp_addLp_num <- function(x, y, nthread) {
     .Call(`_LauraeCpp_Rcpp_addLp_num`, x, y, nthread)
 }
 
+Rcpp_diffLp_int <- function(x, lag, differences, nthread) {
+    .Call(`_LauraeCpp_Rcpp_diffLp_int`, x, lag, differences, nthread)
+}
+
+Rcpp_diffLp_num <- function(x, lag, differences, nthread) {
+    .Call(`_LauraeCpp_Rcpp_diffLp_num`, x, lag, differences, nthread)
+}
+
 Rcpp_divLp_num <- function(x, y, nthread) {
     .Call(`_LauraeCpp_Rcpp_divLp_num`, x, y, nthread)
 }

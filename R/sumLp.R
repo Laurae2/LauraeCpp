@@ -27,35 +27,36 @@
 #'
 #' # Base version
 #' system.time({
-#'   y0 <- sum(x)
+#'   z0 <- sum(x)
 #' })
 #'
 #' # Singlethreaded version
 #' system.time({
-#'   y1 <- sumLp(x = x, nthread = 1)
+#'   z1 <- sumLp(x, nthread = 1)
 #' })
 #'
 #' # Multithreaded version
 #' system.time({
-#'   y2 <- sumLp(x = x, nthread = 2)
+#'   z2 <- sumLp(x, nthread = 2)
 #' })
 #'
 #' # Proof check
-#' stopifnot(all.equal(y0, y1), all.equal(y0, y2))
-#' rm(x, y0, y1, y2)
+#' stopifnot(all.equal(z0, z1), all.equal(z0, z2))
+#' rm(x, z0, z1, z2)
 #'
 #' \dontrun{
 #' # "BIG DATAish": Requires at least 16GB RAM free
-#' # Not advised to run on Windows, will explode RAM on many core systems
+#' # Not advised to run on Windows as it will explode RAM on many core systems
 #' x <- runif(n = 2^31 - 1, min = -0.5, max = 1)
+#' n_cores <- parallel::detectCores()
 #' system.time({
-#'   y1 <- sum(x)
+#'   z1 <- sum(x)
 #' })
 #' system.time({
-#'   y2 <- sumLp(x = x, nthread = parallel::detectCores())
+#'   z2 <- sumLp(x, nthread = n_cores)
 #' })
-#' stopifnot(all.equal(y1, y2))
-#' rm(x, y1, y2)
+#' stopifnot(all.equal(z1, z2))
+#' rm(x, z1, z2)
 #' }
 #'
 #' @export

@@ -48,12 +48,12 @@ system.time({
 
 # Singlethreaded version
 system.time({
-  z1 <- subLp(x = x, y = y, nthread = 1)
+  z1 <- subLp(x, y, nthread = 1)
 })
 
 # Multithreaded version
 system.time({
-  z2 <- subLp(x = x, y = y, nthread = 2)
+  z2 <- subLp(x, y, nthread = 2)
 })
 
 # Proof check
@@ -62,17 +62,18 @@ rm(x, y, z0, z1, z2)
 
 \dontrun{
 # "BIG DATAish": Requires at least 32GB RAM free
-# Not advised to run on Windows, will explode RAM on many core systems
+# Not advised to run on Windows as it will explode RAM on many core systems
 x <- runif(n = 2^31 - 1, min = -0.5, max = 1)
 y <- runif(n = 2^31 - 1, min = -0.5, max = 1)
+n_cores <- parallel::detectCores()
 system.time({
   z1 <- x - y
 })
 system.time({
-  z2 <- subLp(x = x, y = y, nthread = parallel::detectCores())
+  z2 <- subLp(x, y, nthread = n_cores)
 })
 stopifnot(all.equal(z1, z2))
-rm(x, z1, z2)
+rm(x, y, z1, z2)
 }
 
 }

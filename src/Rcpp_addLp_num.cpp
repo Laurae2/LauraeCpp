@@ -3,13 +3,12 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-Rcpp::NumericVector Rcpp_addLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::NumericVector nthread) {
+Rcpp::NumericVector Rcpp_addLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, int nthread) {
 
   R_xlen_t max_size = x.size();
   Rcpp::NumericVector z(max_size);
-  int nthreads = nthread[0];
 
-  #pragma omp parallel for shared(x, y) num_threads(nthreads)
+  #pragma omp parallel for shared(x, y) num_threads(nthread)
   for (R_xlen_t i=0; i<max_size; i++) {
     z[i] = x[i] + y[i];
   }
