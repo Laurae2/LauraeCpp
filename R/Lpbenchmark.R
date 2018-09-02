@@ -29,7 +29,7 @@ Lpbenchmark <- function(size = 1e8, test_threads = seq_len(parallel::detectCores
 
   if (html_out) {
 
-    rmarkdown::render(input = system.file("/inst/extra/benchmark.rmd", package = "LauraeCpp"),
+    rmarkdown::render(input = system.file("extra/benchmark.Rmd", package = "LauraeCpp"),
                       output_file = output_file,
                       output_dir = output_dir,
                       params = list(size = size, test_threads = test_threads, repeats = repeats, seed = seed))
