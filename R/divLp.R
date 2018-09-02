@@ -10,6 +10,7 @@
 #' The memory requirements scales linearly with the number of threads requested on Windows.
 #'
 #' Use the following functions if you already know the input types: \itemize{
+#' \item{\code{divLp.integer}}{ for integer (dispatched to numeric in practice)}
 #' \item{\code{divLp.numeric}}{ for numeric}
 #' }
 #'
@@ -19,7 +20,7 @@
 #'
 #' @return \code{x / y}.
 #'
-#' @aliases divLp.numeric Rcpp_divLp_num
+#' @aliases divLp.integer divLp.numeric Rcpp_divLp_num
 #'
 #' @examples
 #'
@@ -74,6 +75,12 @@ divLp <- function(x, y, nthread = parallel::detectCores()) {
   } else {
     stop(paste0("Class of object x or y are incorrect: ", class(x), " and ", class(y)))
   }
+
+}
+
+divLp.integer <- function(x, y, nthread = parallel::detectCores()) {
+
+  return(Rcpp_divLp_num(x, y, nthread))
 
 }
 

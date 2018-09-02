@@ -45,7 +45,7 @@ The memory requirements scales linearly with the number of threads requested on 
 
 Use the following functions if you already know the input types: \itemize{
 \item{\code{diffLp_simd.integer}}{ for integer}
-\item{\code{diffLp_simd.integer.numeric}}{ for numeric}
+\item{\code{diffLp_simd.numeric}}{ for numeric}
 }
 }
 \examples{

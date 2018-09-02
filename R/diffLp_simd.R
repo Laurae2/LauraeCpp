@@ -20,7 +20,7 @@
 #'
 #' Use the following functions if you already know the input types: \itemize{
 #' \item{\code{diffLp_simd.integer}}{ for integer}
-#' \item{\code{diffLp_simd.integer.numeric}}{ for numeric}
+#' \item{\code{diffLp_simd.numeric}}{ for numeric}
 #' }
 #'
 #' @param x The vector to compute the lagged differences on.

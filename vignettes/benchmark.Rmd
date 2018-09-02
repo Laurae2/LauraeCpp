@@ -1,0 +1,1457 @@
+---
+title: "LauraeCpp Benchmark"
+author: "Laurae"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    fig_width: 7
+    fig_height: 5
+vignette: >
+  %\VignetteIndexEntry{LauraeCpp Benchmark}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Initialization {.tabset .tabset-fade .tabset-pills}
+
+## Load Libraries
+
+```{r libraries}
+library(LauraeCpp)
+library(parallel)
+library(microbenchmark)
+```
+
+## Hardware and Software Specifications
+
+Standard R sessionInfo...
+
+```{r sessioninfo}
+sessionInfo()
+```
+
+System information...
+
+```{r sysinfo}
+Sys.info()[c(1:3, 5)]
+```
+
+CPU information...
+
+```{r cpuinfo}
+if (Sys.info()[1] == "Windows") {
+  cat(system("wmic cpu get architecture,caption,name", intern = TRUE), sep = "  \n")
+  cat(system("wmic cpu get L2CacheSize,L3CacheSize,MaxClockSpeed", intern = TRUE), sep = "  \n")
+  cat(system("wmic cpu get NumberOfCores,NumberofEnabledCore,ThreadCount", intern = TRUE), sep = "  \n")
+} else if (Sys.info()[1] == "Linux") {
+  cat(system("lscpu", intern = TRUE), sep = "  \n")
+} else if (Sys.info()[1] == "Darwin") {
+  cat(system("sysctl -a | grep cpu", intern = TRUE), sep = "  \n")
+} else {
+  cat("Unknown Operating System / CPU...")
+}
+```
+
+## Variable Checkup
+
+```{r variable_checkup}
+if (exists("size") == FALSE) {
+  size <- 1e7
+}
+if (exists("test_threads") == FALSE) {
+  test_threads <- 1:2
+}
+if (exists("repeats") == FALSE) {
+  repeats <- 1
+}
+if (exists("seed") == FALSE) {
+  seed <- 1
+}
+```
+
+## Wrapper Good / Bad
+
+```{r wrapper}
+wrapper <- function(old, new, text) {
+  if (old < new) {
+    return(paste0("<font color='red'>", text, "</font>"))
+  } else if (old > new) {
+    return(paste0("<font color='green'>", text, "</font>"))
+  } else {
+    return(text)
+  }
+}
+```
+
+# Benchmarks {.tabset .tabset-fade .tabset-pills}
+
+Using the "c" function allows to override the compressed format of R for integer and numeric vectors when R >= 3.5.0. They immediately get pre-allocated.
+
+## Sum (Integer)
+
+### Preparation
+
+```{r sumLp_int_prep}
+fun_name <- "Sum (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r sumLp_int_r}
+ref_time <- median(microbenchmark(sum(x), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r sumLp_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(sumLp.integer(x, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r sumLp_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r sumLp_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r sumLp_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r sumLp_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r sumLp_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Sum (Numeric)
+
+### Preparation
+
+```{r sumLp_num_prep}
+fun_name <- "Sum (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r sumLp_num_r}
+ref_time <- median(microbenchmark(sum(x), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r sumLp_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(sumLp.numeric(x, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r sumLp_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r sumLp_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r sumLp_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r sumLp_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r sumLp_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Mean (Integer)
+
+### Preparation
+
+```{r meanLp_int_prep}
+fun_name <- "Mean (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r meanLp_int_r}
+ref_time <- median(microbenchmark(mean(x), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r meanLp_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(meanLp.integer(x, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r meanLp_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r meanLp_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r meanLp_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r meanLp_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r meanLp_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Mean (Numeric)
+
+### Preparation
+
+```{r meanLp_num_prep}
+fun_name <- "Mean (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r meanLp_num_r}
+ref_time <- median(microbenchmark(mean(x), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r meanLp_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(meanLp.numeric(x, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r meanLp_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r meanLp_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r meanLp_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r meanLp_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r meanLp_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Add (Integer)
+
+### Preparation
+
+```{r addLp_int_prep}
+fun_name <- "Add (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+y <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r addLp_int_r}
+ref_time <- median(microbenchmark(x + y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r addLp_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(addLp.integer(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r addLp_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r addLp_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r addLp_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r addLp_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r addLp_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Add (Numeric)
+
+### Preparation
+
+```{r addLp_num_prep}
+fun_name <- "Add (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+y <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r addLp_num_r}
+ref_time <- median(microbenchmark(x + y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r addLp_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(addLp.numeric(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r addLp_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r addLp_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r addLp_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r addLp_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r addLp_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Subtract (Integer)
+
+### Preparation
+
+```{r subLp_int_prep}
+fun_name <- "Subtract (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+y <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r subLp_int_r}
+ref_time <- median(microbenchmark(x - y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r subLp_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(subLp.integer(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r subLp_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r subLp_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r subLp_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r subLp_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r subLp_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Subtract (Numeric)
+
+### Preparation
+
+```{r subLp_num_prep}
+fun_name <- "Subtract (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+y <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r subLp_num_r}
+ref_time <- median(microbenchmark(x - y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r subLp_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(subLp.numeric(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r subLp_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r subLp_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r subLp_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r subLp_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r subLp_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Multiplicate (Integer)
+
+### Preparation
+
+```{r mulLp_int_prep}
+fun_name <- "Multiplicate (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+y <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r mulLp_int_r}
+ref_time <- median(microbenchmark(x * y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r mulLp_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(mulLp.integer(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r mulLp_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r mulLp_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r mulLp_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r mulLp_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r mulLp_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Multiplicate (Numeric)
+
+### Preparation
+
+```{r mulLp_num_prep}
+fun_name <- "Multiplicate (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+y <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r mulLp_num_r}
+ref_time <- median(microbenchmark(x * y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r mulLp_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(mulLp.numeric(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r mulLp_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r mulLp_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r mulLp_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r mulLp_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r mulLp_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Divide (Integer)
+
+### Preparation
+
+```{r divLp_int_prep}
+fun_name <- "Divide (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+y <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r divLp_int_r}
+ref_time <- median(microbenchmark(x / y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r divLp_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(divLp.integer(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r divLp_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r divLp_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r divLp_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r divLp_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r divLp_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Divide (Numeric)
+
+### Preparation
+
+```{r divLp_num_prep}
+fun_name <- "Divide (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+y <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r divLp_num_r}
+ref_time <- median(microbenchmark(x / y, times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r divLp_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(divLp.numeric(x, y, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r divLp_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r divLp_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r divLp_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r divLp_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r divLp_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff [1,1] (Integer)
+
+### Preparation
+
+```{r diffLp11_int_prep}
+fun_name <- "Diff [1,1] (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp11_int_r}
+ref_time <- median(microbenchmark(diff(x, lag = 1, differences = 1), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp11_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp.integer(x, lag = 1, differences = 1, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp11_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp11_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp11_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp11_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp11_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff [1,1] (Numeric)
+
+### Preparation
+
+```{r diffLp11_num_prep}
+fun_name <- "Diff [1,1] (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp11_num_r}
+ref_time <- median(microbenchmark(diff(x, lag = 1, differences = 1), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp11_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp.numeric(x, lag = 1, differences = 1, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp11_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp11_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp11_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp11_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp11_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff [3,3] (Integer)
+
+### Preparation
+
+```{r diffLp33_int_prep}
+fun_name <- "Diff [3,3] (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp33_int_r}
+ref_time <- median(microbenchmark(diff(x, lag = 3, differences = 3), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp33_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp.integer(x, lag = 3, differences = 3, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp33_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp33_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp33_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp33_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp33_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff [3,3] (Numeric)
+
+### Preparation
+
+```{r diffLp33_num_prep}
+fun_name <- "Diff [3,3] (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp33_num_r}
+ref_time <- median(microbenchmark(diff(x, lag = 3, differences = 3), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp33_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp.numeric(x, lag = 3, differences = 3, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp33_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp33_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp33_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp33_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp33_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff SIMD [1,1] (Integer)
+
+### Preparation
+
+```{r diffLp_simd11_int_prep}
+fun_name <- "Diff SIMD [1,1] (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp_simd11_int_r}
+ref_time <- median(microbenchmark(diff(x, lag = 1, differences = 1), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp_simd11_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp_simd.integer(x, lag = 1, differences = 1, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp_simd11_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp_simd11_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp_simd11_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp_simd11_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp_simd11_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff SIMD [1,1] (Numeric)
+
+### Preparation
+
+```{r diffLp_simd11_num_prep}
+fun_name <- "Diff SIMD [1,1] (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp_simd11_num_r}
+ref_time <- median(microbenchmark(diff(x, lag = 1, differences = 1), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp_simd11_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp_simd.numeric(x, lag = 1, differences = 1, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp_simd11_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp_simd11_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp_simd11_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp_simd11_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp_simd11_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff SIMD [3,3] (Integer)
+
+### Preparation
+
+```{r diffLp_simd33_int_prep}
+fun_name <- "Diff SIMD [3,3] (int)"
+set.seed(seed)
+x <- as.integer(sample(-5:5, size = size, replace = TRUE))
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp_simd33_int_r}
+ref_time <- median(microbenchmark(diff(x, lag = 3, differences = 3), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp_simd33_int_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp_simd.integer(x, lag = 3, differences = 3, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp_simd33_int_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp_simd33_int_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp_simd33_int_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp_simd33_int_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp_simd33_int_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+
+## Diff SIMD [3,3] (Numeric)
+
+### Preparation
+
+```{r diffLp_simd33_num_prep}
+fun_name <- "Diff SIMD [3,3] (num)"
+set.seed(seed)
+x <- runif(size, min = -5, max = 5)
+invisible(gc(verbose = FALSE))
+```
+
+### Reference Benchmark
+
+```{r diffLp_simd33_num_r}
+ref_time <- median(microbenchmark(diff(x, lag = 3, differences = 3), times = repeats, unit = "ms")$time)
+table_compare <- paste0("| Function | Median Time | Operations/second | Speedup vs R | Efficiency |  \n| ---: | ---: | ---: | ---: | ---: |  \n| **Standard R** | **", sprintf("%05.03f", ref_time / 1000000), " ms** | **", sprintf("%02.03f", (size / (ref_time / 1e9)) / 1e9), " bn Ops/s** | **", sprintf("%05.03f", 1), "x** | **", sprintf("%05.03f", 100 * 1), "%** |")
+```
+
+### LauraeCpp Benchmark
+
+```{r diffLp_simd33_num_Cpp}
+n_times <- rep(repeats, length(test_threads))
+matrix_time <- matrix(0, nrow = length(test_threads), ncol = 2)
+matrix_time[, 1] <- test_threads
+colnames(matrix_time) <- c("Threads", "Time")
+for (i in seq_len(length(test_threads))) {
+  matrix_time[i, 2] <- median(microbenchmark(diffLp_simd.numeric(x, lag = 3, differences = 3, nthread = test_threads[i]), times = repeats, unit = "ms")$time)
+  # cat("Done ", sprintf(paste0("%0", floor(log10(max(test_threads))) + 1, "d"), test_threads[i]), " threads: ", sprintf("%05.03f", matrix_time[i, 2] / 1000000), "ms (", sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s) \n", sep = "")
+  table_compare <- paste0(table_compare, "  \n| LauraeCpp (", test_threads[i], " threads) | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", matrix_time[i, 2] / 1000000), " ms")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%02.03f", (size / (matrix_time[i, 2] / 1e9)) / 1e9), " bn Ops/s")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", ref_time / matrix_time[i, 2]), "x")), " | ", wrapper(ref_time, matrix_time[i, 2], paste0(sprintf("%05.03f", 100 * ref_time / matrix_time[i, 2] / test_threads[i]), "%")), " |")
+  invisible(gc())
+}
+```
+
+### Comparison {.tabset .tabset-fade .tabset-pills}
+
+#### Raw Data
+
+```{r diffLp_simd33_num_print, echo=FALSE, message=FALSE, results="asis", warnings=FALSE}
+cat(table_compare)
+```
+
+#### Speed
+
+```{r diffLp_simd33_num_chart_speed}
+plot(x = c(0, matrix_time[, 1]), y = c(ref_time, matrix_time[, 2]) / 1000000, type = "o", main = paste0("Speed of Parallel ", fun_name), xlab = "Threads", ylab = "Elapsed Time (milliseconds)", col = "red", ylim = c(0, max(c(ref_time, matrix_time[, 2]) / 1000000)))
+abline(h = ref_time / 1000000, col = "blue")
+```
+
+#### Scalability
+
+```{r diffLp_simd33_num_chart_scalability}
+plot(x = c(0, matrix_time[, 1]), y = ref_time / c(ref_time, matrix_time[, 2]), type = "o", main = paste0("Scalability of Parallel ", fun_name), xlab = "Threads", ylab = "Scaling vs singlethreaded R", col = "red", ylim = c(0, max(ref_time / c(ref_time, matrix_time[, 2]))))
+abline(h = 1, col = "blue")
+```
+
+#### Operations / second
+
+```{r diffLp_simd33_num_chart_ops}
+plot(x = c(0, matrix_time[, 1]), y = (size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9, type = "o", main = paste0("Elements/s of ", fun_name), xlab = "Threads", ylab = "Elements per Second (billions)", col = "red", ylim = c(0, max((size / (c(ref_time, matrix_time[, 2]) / 1e9)) / 1e9)))
+abline(h = (size / (ref_time / 1e9)) / 1e9, col = "blue")
+```
+
+### Cleanup
+
+```{r diffLp_simd33_num_cleanup}
+rm(x, matrix_time, ref_time, table_compare)
+```
+

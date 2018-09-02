@@ -9,7 +9,13 @@ Depends:
 	R (>= 3.3.0)
 Imports:
 	Rcpp (>= 0.12.16),
-	parallel
+	parallel,
+	utils
+Suggests:
+	rmarkdown,
+	knitr,
+	microbenchmark
+VignetteBuilder: knitr
 LinkingTo: Rcpp
 License: What license is it under? A license where I'm not liable for anything you do bad with.
 Encoding: UTF-8

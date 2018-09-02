@@ -2,6 +2,7 @@
 % Please edit documentation in R/divLp.R
 \name{divLp}
 \alias{divLp}
+\alias{divLp.integer}
 \alias{divLp.numeric}
 \alias{Rcpp_divLp_num}
 \title{Relaxed Parallel Division}
@@ -30,6 +31,7 @@ On Windows, the parallel version requires more RAM than the singlethreaded versi
 The memory requirements scales linearly with the number of threads requested on Windows.
 
 Use the following functions if you already know the input types: \itemize{
+\item{\code{divLp.integer}}{ for integer (dispatched to numeric in practice)}
 \item{\code{divLp.numeric}}{ for numeric}
 }
 }
