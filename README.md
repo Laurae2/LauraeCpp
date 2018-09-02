@@ -100,4 +100,5 @@ Results of the parallel mean:
 | mulLp | nthread | Relaxed parallel A * B on integer or numeric vector |
 | divLp | nthread | Relaxed parallel A / B on integer or numeric vector |
 | diffLp | lag, difference, nthread | Relaxed parallel lagged differences (`base::diff`) on integer or numeric vector |
+| diffLp_simd | lag, difference, nthread | Relaxed SIMD parallel lagged differences (`base::diff`) on integer or numeric vector |
 

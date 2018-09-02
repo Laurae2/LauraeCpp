@@ -59,6 +59,34 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Rcpp_diffLp_simd_int
+Rcpp::IntegerVector Rcpp_diffLp_simd_int(Rcpp::IntegerVector x, int lag, int differences, int nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_diffLp_simd_int(SEXP xSEXP, SEXP lagSEXP, SEXP differencesSEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< int >::type differences(differencesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_diffLp_simd_int(x, lag, differences, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Rcpp_diffLp_simd_num
+Rcpp::NumericVector Rcpp_diffLp_simd_num(Rcpp::NumericVector x, int lag, int differences, int nthread);
+RcppExport SEXP _LauraeCpp_Rcpp_diffLp_simd_num(SEXP xSEXP, SEXP lagSEXP, SEXP differencesSEXP, SEXP nthreadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type lag(lagSEXP);
+    Rcpp::traits::input_parameter< int >::type differences(differencesSEXP);
+    Rcpp::traits::input_parameter< int >::type nthread(nthreadSEXP);
+    rcpp_result_gen = Rcpp::wrap(Rcpp_diffLp_simd_num(x, lag, differences, nthread));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Rcpp_divLp_num
 Rcpp::NumericVector Rcpp_divLp_num(Rcpp::NumericVector x, Rcpp::NumericVector y, int nthread);
 RcppExport SEXP _LauraeCpp_Rcpp_divLp_num(SEXP xSEXP, SEXP ySEXP, SEXP nthreadSEXP) {
@@ -178,6 +206,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_LauraeCpp_Rcpp_addLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_addLp_num, 3},
     {"_LauraeCpp_Rcpp_diffLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_diffLp_int, 4},
     {"_LauraeCpp_Rcpp_diffLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_diffLp_num, 4},
+    {"_LauraeCpp_Rcpp_diffLp_simd_int", (DL_FUNC) &_LauraeCpp_Rcpp_diffLp_simd_int, 4},
+    {"_LauraeCpp_Rcpp_diffLp_simd_num", (DL_FUNC) &_LauraeCpp_Rcpp_diffLp_simd_num, 4},
     {"_LauraeCpp_Rcpp_divLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_divLp_num, 3},
     {"_LauraeCpp_Rcpp_meanLp_int", (DL_FUNC) &_LauraeCpp_Rcpp_meanLp_int, 2},
     {"_LauraeCpp_Rcpp_meanLp_num", (DL_FUNC) &_LauraeCpp_Rcpp_meanLp_num, 2},

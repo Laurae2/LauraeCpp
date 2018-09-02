@@ -17,6 +17,14 @@ Rcpp_diffLp_num <- function(x, lag, differences, nthread) {
     .Call(`_LauraeCpp_Rcpp_diffLp_num`, x, lag, differences, nthread)
 }
 
+Rcpp_diffLp_simd_int <- function(x, lag, differences, nthread) {
+    .Call(`_LauraeCpp_Rcpp_diffLp_simd_int`, x, lag, differences, nthread)
+}
+
+Rcpp_diffLp_simd_num <- function(x, lag, differences, nthread) {
+    .Call(`_LauraeCpp_Rcpp_diffLp_simd_num`, x, lag, differences, nthread)
+}
+
 Rcpp_divLp_num <- function(x, y, nthread) {
     .Call(`_LauraeCpp_Rcpp_divLp_num`, x, y, nthread)
 }
