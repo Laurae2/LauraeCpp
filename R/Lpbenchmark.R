@@ -2,7 +2,7 @@
 #'
 #' Runs the integrated benchmarking suite.
 #'
-#' @param size The size of the benchmark. If you don't know what value to use. Defaults to \code{1e8} (approximately 750MB, requires at least 750MB x 4 = 3GB).
+#' @param size The size of the benchmark. If you don't know what value to use. Defaults to \code{1e8} (approximately 750MB, requires at least 750MB x 4 = 3GB). For a 1e9 size (1,000,000,000 elements), it requires about 48GB RAM to benchmark properly.
 #' @param test_threads The number of threads to test, to provide as a vector. Defaults to \code{seq_len(parallel::detectCores())} which means try from 1 to all threads.
 #' @param repeats The number of times to retry benchmarking to average out results. Defaults to \code{5}.
 #' @param seed The random number generator seed. It should not have any impact on performance. Defaults to \code{1}.
@@ -20,7 +20,9 @@
 #'
 #' # Output benchmark repeated 5 times using 1 to all threads in HTML file and opens it immediately
 #' Lpbenchmark(size = 1e7, repeats = 5, html_out = TRUE,
-#'             output_file = tempdir(), output_dir = tempdir(), open_file = TRUE)
+#'             output_file = basename(tempfile(tmpdir = "", fileext = ".html")),
+#'             output_dir = tempdir(),
+#'             open_file = TRUE)
 #' }
 #'
 #' @export
@@ -32,6 +34,7 @@ Lpbenchmark <- function(size = 1e8, test_threads = seq_len(parallel::detectCores
     rmarkdown::render(input = system.file("extra/benchmark.Rmd", package = "LauraeCpp"),
                       output_file = output_file,
                       output_dir = output_dir,
+                      intermediates_dir = output_dir,
                       params = list(size = size, test_threads = test_threads, repeats = repeats, seed = seed))
 
     if (open_file == TRUE) {
@@ -41,7 +44,7 @@ Lpbenchmark <- function(size = 1e8, test_threads = seq_len(parallel::detectCores
 
   } else {
 
-
+    stop("Non-HTML is not supported!")
 
   }
 

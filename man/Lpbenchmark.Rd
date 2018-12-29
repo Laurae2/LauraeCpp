@@ -9,7 +9,7 @@ Lpbenchmark(size = 1e+08, test_threads = seq_len(parallel::detectCores()),
   output_file = "benchmark.html", output_dir = "./", open_file = FALSE)
 }
 \arguments{
-\item{size}{The size of the benchmark. If you don't know what value to use. Defaults to \code{1e8} (approximately 750MB, requires at least 750MB x 4 = 3GB).}
+\item{size}{The size of the benchmark. If you don't know what value to use. Defaults to \code{1e8} (approximately 750MB, requires at least 750MB x 4 = 3GB). For a 1e9 size (1,000,000,000 elements), it requires about 48GB RAM to benchmark properly.}
 
 \item{test_threads}{The number of threads to test, to provide as a vector. Defaults to \code{seq_len(parallel::detectCores())} which means try from 1 to all threads.}
 
@@ -38,7 +38,9 @@ Lpbenchmark(size = 1e7, test_threads = 1:2, repeats = 1, html_out = FALSE)
 
 # Output benchmark repeated 5 times using 1 to all threads in HTML file and opens it immediately
 Lpbenchmark(size = 1e7, repeats = 5, html_out = TRUE,
-            output_file = tempdir(), output_dir = tempdir(), open_file = TRUE)
+            output_file = basename(tempfile(tmpdir = "", fileext = ".html")),
+            output_dir = tempdir(),
+            open_file = TRUE)
 }
 
 }

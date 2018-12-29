@@ -1,8 +1,8 @@
 Package: LauraeCpp
 Type: Package
 Title: Parallel R for High Performance Computing
-Version: 0.20180902
-Date: 2018-09-02
+Version: 0.20181229
+Date: 2018-12-29
 Authors@R: person("Laurae", "Laurae", email = "first.last@example.com", role = c("aut", "cre"))
 Description: This package is meant for high performance computing on single systems using parallel functions.
 Depends:
